@@ -3,13 +3,13 @@
 library(shiny)
 library(bio3d)
 
-#test env
+#sharable env to store blast hits
 share.env <- new.env()
 
 # Define UI for application 
 ui <- fluidPage(
   
-  titlePanel("PDB Blast App"),
+  titlePanel("Shiny Blast App"),
   sidebarLayout(
     sidebarPanel(
       p("A web tool for blasting a provided PDB structure against the PDB database"),br()
@@ -26,12 +26,14 @@ ui <- fluidPage(
            dataTableOutput('table')
     )
   ),
-  downloadButton("download", "Download best models")
-  #actionButton("download","download best models")
+  downloadButton("download", "Download best models"),
+  downloadButton("downloadTable", "Download blast result")
 )
+
 best_hits <- NULL
-#cod_pdbs = NULL
-#pdb = NULL
+blast_result <- NULL
+
+
 # Define server logic required to process the input
 server <- function(input, output) {
   # process button click
@@ -52,8 +54,7 @@ server <- function(input, output) {
     
     ##### save best hits on a sharable environment
     share.env$best_hits <- b_hits
-    #print(get('best_hits', envir=share.env))
-    #print(bets_hits)
+    share.env$blast_result <- blast$hit.tbl
     
     ##### send hits to table
     output$table <- renderDataTable(blast$hit.tbl)
@@ -65,24 +66,40 @@ server <- function(input, output) {
   })
   
   observeEvent(input$download, {
-    #cod_pdbs = best_hits$pdb.id
-    id2 <- showNotification(paste("downloading results..."), duration = 2)
-    print(best_hits)  
+    id2 <- showNotification(paste("downloading best PDB's from blast result..."), duration = 5)
   })
   
-  # Downloadable csv of selected dataset ----
+  observeEvent(input$downloadTable, {
+    id3 <- showNotification(paste("downloading blast results..."), duration = 2)
+  })
+  
+  # Download best pdbs from blast ----
   output$download <- downloadHandler(
     filename = function() {
-      paste("blast_result", ".csv", sep = "")
-      #cod_pdbs = best_hits$pdb.id
-      #paste(cod_pdbs[0], ".pdb", sep="")
+      temp=get('best_hits', envir=share.env)
+      cod_pdbs = temp$pdb.id
+      paste("best_results", "zip", sep=".")
     },
     content = function(file) {
-      #cod_pdbs = best_hits$pdb.id
-      #pdb <- read.pdb(cod_pdbs[0])
-      #write.pdb(pdb=pdb, file = file)
-      #print(best_hits)
-      write.csv(get('best_hits', envir=share.env), file, row.names = TRUE)
+      temp=get('best_hits', envir=share.env)
+      pdb_files=get.pdb(temp$pdb.id)
+      print(pdb_files)
+      #print(pdb_file)
+      zip(zipfile=file, files=pdb_files)
+    },
+    contentType = "application/zip"
+  )
+  
+  
+  
+  # Download blast result on CSV format ----
+  output$downloadTable <- downloadHandler(
+    filename = function() {
+      paste("blast_result", ".csv", sep = "")
+    },
+    content = function(file) {
+      temp=get('blast_result', envir=share.env)
+      write.csv(temp, file, row.names = TRUE)
     }
   )
   
