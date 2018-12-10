@@ -3,6 +3,9 @@
 library(shiny)
 library(bio3d)
 
+#test env
+share.env <- new.env()
+
 # Define UI for application 
 ui <- fluidPage(
   
@@ -27,26 +30,32 @@ ui <- fluidPage(
   #actionButton("download","download best models")
 )
 best_hits <- NULL
-cod_pdbs = NULL
-pdb = NULL
+#cod_pdbs = NULL
+#pdb = NULL
 # Define server logic required to process the input
 server <- function(input, output) {
   # process button click
   observeEvent(input$blast, {
     id <- showNotification(paste("blasting against pdb ", input$pdb_id,"..."), duration = 10)
     
-    #process pdb entry
+    ##### process pdb entry
     pdb <- read.pdb(input$pdb_id)
     #print(pdb)
     aa <- pdbseq(pdb)
     #print(aa)
-    #blast against pdb database
+    
+    
+    ##### blast against pdb database
     blast <- blast.pdb(aa)
     b_hits=head(blast$hit.tbl)
     cod_pdbs = b_hits$pdb.id
-    assign("best_hits", b_hits, envir = .GlobalEnv)
+    
+    ##### save best hits on a sharable environment
+    share.env$best_hits <- b_hits
+    #print(get('best_hits', envir=share.env))
     #print(bets_hits)
-    #send hits to table
+    
+    ##### send hits to table
     output$table <- renderDataTable(blast$hit.tbl)
   })
   
@@ -64,10 +73,16 @@ server <- function(input, output) {
   # Downloadable csv of selected dataset ----
   output$download <- downloadHandler(
     filename = function() {
-      paste("blast_result", ".csv", sep = ",")
+      paste("blast_result", ".csv", sep = "")
+      #cod_pdbs = best_hits$pdb.id
+      #paste(cod_pdbs[0], ".pdb", sep="")
     },
     content = function(file) {
-      write.csv(best_hits, file, row.names = TRUE)
+      #cod_pdbs = best_hits$pdb.id
+      #pdb <- read.pdb(cod_pdbs[0])
+      #write.pdb(pdb=pdb, file = file)
+      #print(best_hits)
+      write.csv(get('best_hits', envir=share.env), file, row.names = TRUE)
     }
   )
   
